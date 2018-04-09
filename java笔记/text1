@@ -1,0 +1,12 @@
+Q: path和classpath的区别？
+A：path环境变量里面记录的是可执行性文件，如.exe文件，对可执行文件先在当前路径去找，如果没找到就去path环境变量中配置的路径去找
+classpath环境变量里记录的是java类的运行文件所在的目录
+
+Q:write once，run anywhere
+A:不同的操作系统需要使用不同版本的虚拟机
+
+Q:Java语言的常用包
+A:java.util:包含Java中大量工具类、集合类等，例如Arrays、List、Set等。
+java.net:包含Java网络编程相关的类和接口。
+java.io:包含了Java输入、输出有关的类和接口。
+
