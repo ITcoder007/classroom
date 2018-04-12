@@ -1,0 +1,60 @@
+首先，在面向切面编程的思想里面，把功能分为核心业务功能，和周边功能。 
+	所谓的核心业务，比如登陆，增加数据，删除数据都叫核心业务 
+	所谓的周边功能，比如性能统计，日志，事务管理等等 
+
+	在面向切面编程AOP的思想里面，核心业务功能和切面功能分别独立进行开发,然后把切面功能和核心业务功能 "编织" 在一起，这就叫AOP
+(周边功能在Spring的面向切面编程AOP思想里，即被定义为切面 )
+1. 功能分两大类，辅助功能和核心业务功能
+2. 辅助功能和核心业务功能彼此独立进行开发
+3. 比如登陆功能，即便是没有性能统计和日志输出，也可以正常运行
+4. 如果有需要，就把"日志输出" 功能和 "登陆" 功能 编织在一起，这样登陆的时候，就可以看到日志输出了
+5. 辅助功能，又叫做切面，这种能够选择性的，低耦合的把切面和核心业务功能结合在一起的编程思想，就叫做切面编程
+
+······················································xml方式：
+Object object = joinPoint.proceed();
+	<bean name="s" class="com.how2java.service.ProductService" />
+    <bean id="loggerAspect" class="com.how2java.aspect.LoggerAspect"/>
+    <aop:config>
+        <aop:pointcut id="loggerCutpoint"
+            expression=
+            "execution(* com.how2java.service.ProductService.*(..)) "/>
+             
+        <aop:aspect id="logAspect" ref="loggerAspect">
+            <aop:around pointcut-ref="loggerCutpoint" method="log"/>
+        </aop:aspect>
+    </aop:config> 
+
+······················································注解方式：
+@Aspect 注解表示这是一个切面
+@Component 表示这是一个bean,由Spring进行管理
+@Around(value = "execution(* com.how2java.service.ProductService.*(..))") 表示对com.how2java.service.ProductService 这个类中的所有方法进行切面操作
+
+@Aspect
+@Component
+public class LoggerAspect {
+     
+    @Around(value = "execution(* com.how2java.service.ProductService.*(..))")
+    public Object log(ProceedingJoinPoint joinPoint) throws Throwable {···
+    
+····················································测试spring
+修改TestSpring, 并运行
+1. @RunWith(SpringJUnit4ClassRunner.class) 
+表示这是一个Spring的测试类
+2. @ContextConfiguration("classpath:applicationContext.xml")
+定位Spring的配置文件
+3. @Autowired
+给这个测试类装配Category对象
+4. @Test
+测试逻辑，打印c对象的名称
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("classpath:applicationContext.xml")
+public class TestSpring {
+    @Autowired
+    Category c;
+ 
+    @Test
+    public void test(){
+        System.out.println(c.getName());
+    }
+}
