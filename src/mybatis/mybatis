@@ -1,0 +1,264 @@
+官方文档（中文版）： http://www.mybatis.org/mybatis-3/zh/index.html
+
+
+1. 应用程序找Mybatis要数据
+2. mbatis从数据库中找来数据
+2.1 通过mybatis-config.xml 定位哪个数据库
+	在src目录下创建mybatis的主配置文件mybatis-config.xml (相当于hibernate.cfg.xml，如果没有hibernate基础请忽略本句)。
+	其作用主要是提供连接数据库用的驱动，数据库名称，编码方式，账号密码
+		<property name="driver" value="com.mysql.jdbc.Driver"/>
+		<property name="url" value="jdbc:mysql://localhost:3306/how2java?characterEncoding=UTF-8"/>
+		<property name="username" value="root"/>
+		<property name="password" value="admin"/>
+	以及别名，自动扫描com.how2java.pojo下的类型，使得在后续配置文件Category.xml中使用resultType的时候，可以直接使用Category,而不必写全com.how2java.pojo.Category
+		<typeAliases>
+		    <package name="com.how2java.pojo"/>
+		</typeAliases>
+	映射Category.xml
+		<mappers>
+		    <mapper resource="com/how2java/pojo/Category.xml"/>
+		</mappers>
+2.2 通过Category.xml执行对应的select语句
+2.3 基于Category.xml把返回的数据库记录封装在Category对象中
+2.4 把多个Category对象装在一个Category集合中
+3. 返回一个Category集合
+
+CRUD:
+<mapper namespace="com.how2java.pojo">
+    <insert id="addCategory" parameterType="Category" >
+        insert into category_ ( name ) values (#{name})   
+    </insert>
+    <delete id="deleteCategory" parameterType="Category" >
+        delete from category_ where id= #{id}  
+    </delete>
+    <select id="getCategory" parameterType="_int" resultType="Category">
+        select * from   category_  where id= #{id}   
+    </select>
+    <update id="updateCategory" parameterType="Category" >
+        update category_ set name=#{name} where id=#{id}   
+    </update>
+    <select id="listCategory" resultType="Category">
+        select * from   category_     
+    </select>    
+</mapper>
+
+模糊查询：
+1. 修改Category.xml，提供listCategoryByName查询语句
+select * from   category_  where name like concat('%',#{0},'%')
+concat('%',#{0},'%') 这是mysql的写法
+如果是oracle，写法是
+select * from   category_  where name like '%'||#{0}||'%'
+
+多条件查询：
+<select id="listCategoryByIdAndName"  parameterType="map" resultType="Category">
+    select * from   category_  where id> #{id}  and name like concat('%',#{name},'%')
+</select>
+
+一对多关系查询：
+通过left join关联查询，对Category和Product表进行关联查询。
+与前面学习的有所区别，这里不是用的resultType, 而是resultMap，通过resultMap把数据取出来放在对应的 对象属性里
+注： Category的id 字段 和Product的id字段同名，Mybatis不知道谁是谁的，所以需要通过取别名cid,pid来区分。
+name字段同理。
+<mapper namespace="com.how2java.pojo">
+    <resultMap type="Category" id="categoryBean">
+        <id column="cid" property="id" />
+        <result column="cname" property="name" />
+ 
+        <!-- 一对多的关系 -->
+        <!-- property: 指的是集合属性的值, ofType：指的是集合中元素的类型 -->
+        <collection property="products" ofType="Product">
+            <id column="pid" property="id" />
+            <result column="pname" property="name" />
+            <result column="price" property="price" />
+        </collection>
+    </resultMap>
+ 
+    <!-- 关联查询分类和产品表 -->
+    <select id="listCategory" resultMap="categoryBean">
+        select c.*, p.*, c.id 'cid', p.id 'pid', c.name 'cname', p.name 'pname' from category_ c left join product_ p on c.id = p.cid
+    </select>   
+</mapper>
+
+多对一：
+提供Product.xml，通过listProduct配置关联查询的sql语句。
+然后通过resultMap ，进行字段和属性的对应。
+使用association 进行多对一关系关联，指定表字段名称与对象属性名称的一一对应关系
+注： Category的id 字段 和Product的id字段同名，Mybatis不知道谁是谁的，所以需要通过取别名cid,pid来区分。
+name字段同理。
+<mapper namespace="com.how2java.pojo">
+    <resultMap type="Product" id="productBean">
+        <id column="pid" property="id" />
+        <result column="pname" property="name" />
+        <result column="price" property="price" />
+ 
+        <!-- 多对一的关系 -->
+        <!-- property: 指的是属性名称, javaType：指的是属性的类型 -->
+        <association property="category" javaType="Category">
+            <id column="cid" property="id"/>
+            <result column="cname" property="name"/>
+        </association>
+    </resultMap>
+ 
+    <!-- 根据id查询Product, 关联将Orders查询出来 -->
+    <select id="listProduct" resultMap="productBean">
+        select c.*, p.*, c.id 'cid', p.id 'pid', c.name 'cname', p.name 'pname' from category_ c left join product_ p on c.id = p.cid
+    </select>   
+</mapper>
+
+多对多：
+查：
+	<select id="listOrder" resultMap="orderBean">
+		select o.*,p.*,oi.*, o.id 'oid', p.id 'pid', oi.id 'oiid', p.name 'pname' 
+			from order_ o 
+			left join order_item_ oi	on o.id =oi.oid 
+			left join product_ p on p.id = oi.pid 
+	</select>
+增：
+删：
+改：无
+
+动态SQL：
+<select id="listProduct" resultType="Product">
+    select * from product_
+    <if test="name!=null">
+        where name like concat('%',#{name},'%')
+    </if>        
+</select>
+<select id="listProduct" resultType="Product">
+	select * from product_
+	<where>
+		<if test="name!=null">
+			and name like concat('%',#{name},'%')
+		</if>		 	
+		<if test="price!=null and price!=0">
+			and price > #{price}
+		</if>	
+	</where>	 	
+</select>
+<where>标签会进行自动判断
+如果任何条件都不成立，那么就在sql语句里就不会出现where关键字
+如果有任何条件成立，会自动去掉多出来的 and 或者 or。
+<update id="updateProduct" parameterType="Product" >
+    update product_
+    <set>
+        <if test="name != null">name=#{name},</if>
+        <if test="price != null">price=#{price}</if>
+          
+    </set>
+     where id=#{id}   
+</update>
+trim 用来定制想要的功能，比如where标签就可以用
+<trim prefix="WHERE" prefixOverrides="AND |OR ">
+  ... 
+</trim>
+来替换
+set标签就可以用
+<trim prefix="SET" suffixOverrides=",">
+  ...
+</trim>
+来替换
+
+if··else if ··else ··
+<select id="listProduct" resultType="Product">
+	  SELECT * FROM product_ 
+	  <where>
+	  	<choose>
+		  <when test="name != null">
+		    and name like concat('%',#{name},'%')
+		  </when>			  
+		  <when test="price !=null and price != 0">
+		    and price > #{price}
+		  </when>			  		
+	  	  <otherwise>
+	  	  	and id >1
+	  	  </otherwise>
+	  	</choose>
+	  </where>
+</select>
+
+循环
+<select id="listProduct" resultType="Product">
+      SELECT * FROM product_
+        WHERE ID in
+            <foreach item="item" index="index" collection="list"
+                open="(" separator="," close=")">
+                #{item}
+            </foreach>
+</select>
+
+bind标签就像是再做一次字符串拼接，方便后续使用
+<!-- 本来的模糊查询方式 -->
+<!--         <select id="listProduct" resultType="Product"> -->
+<!--             select * from   product_  where name like concat('%',#{0},'%') -->
+<!--         </select> -->
+             
+<select id="listProduct" resultType="Product">
+    <bind name="likename" value="'%' + name + '%'" />
+    select * from   product_  where name like #{likename}
+</select>
+
+
+
+issues：
+·使用到了 mybatis-config.xml;写sql的 xxx.xml;实体类  —— 本阶段，需要编写的文件👌
+·当没有设置parameterType的时候，mybatis会自动识别；即便是设置了其他类型的，比如设置参数类型是  parameterType="_int" ，
+	<select id="listProduct" parameterType="_int" resultType="Product"> mybatis 也会自动纠正，以实际传入的参数类型为准。
+	Mybatis会智能识别 ？？？？？—— 这个源代码就值得去研究了
+·<select id="getCategory" parameterType="_int" ·····
+	这是mybatis 内置别名
+	_int 代表 java中的基本类型int
+	int 代表 java中的类类型Integer
+·结果发现parameterType="map" 不用设置也可以，又是被智能封装了？  ——值得研究源代码
+·我试了下
+-------------
+parameterType="map" 可以改成 parameterType="Category"
+---------------------------------------------
+Map<String,Object> params = new HashMap<>();
+        params.put("id", 3);
+        params.put("name", "cat");
+可以改成
+Category params = new Category();
+        params.setId(3);
+        params.setName("s");
+-----------------------------------------------------
+请问这里的Category和Map是不是没什么区别了？
+Mybatis会自动根据参数类型进行不同的取值方式，如果是Map就通过key来取值，如果是一个实体类，那么就会通过getId,getName来取值
+·增删改就是要简单点的，只要知道成没成功。查是比较麻烦的，成功了还要拿到返回的数据，所以他的方法多 session.selectOne();  selectList();
+·建表关联问题：不用在表中设置主外键关联吗，还是说因为是学习，不是正规开发中，所以暂时不用设置
+	嗯，两说，可以不用。外键关联主要是为了确保数据的安全性和一致性。 使用外键同时也会带来性能上的开销；在某些场合，比如高并发实时电商，还会特意不用外键，以提升数据库性能表现。
+·<package name="com.how2java.pojo"/>  意思是：若在某个地方涉及到pojo类，写pojo类的完整路径会很长，比较麻烦。
+	加上这条配置，就可以简写类的路径，只写类名就ok，类名大小写均可。 
+·mybatis 可以像 hibernate那样自己生成数据库表吗？？？？？？？
+	代码里声明好 执行后 自动生成数据库表
+·Eclipse会自动把src目录下的东西复制到bin下，你的没有自动复制过去，是不是忘记开启eclipse的Build Automatically了？ 开启的地方在：菜单->Project->Build Automatically
+·在mtbatis-config.xml文件中的<environments default="development">          development是数据库的名字吗？？？
+	这一句是表示当前是开发环境，会打印一些辅助日志信息，帮助调试
+·在其他网站看到有关于MyBatis的资料的时候，namespace都是对应的接口类，很少看到像本站这种对应一个包名的，而且解释的也比较含糊：
+	
+·mybatis中 xml文件不支持 大于号 小于号，有两种方法可以解决：
+	第一种：SELECT * FROM test WHERE 1 = 1 AND start_date  &lt;= CURRENT_DATE AND end_date &gt;= CURRENT_DATE
+	第二种：<![CDATA[ when min(starttime)<='12:00' and max(endtime)<='12:00' ]]>
+·有多个when标签 符合条件时 只会执行第一个符合条件的when标签里的语句
+·collection ：collection属性的值有三个分别是list、array、map三种，分别对应的参数类型为：List、数组、map集合，上面传的参数为List，所以值为list
+　　　　item ： 表示在迭代过程中每一个元素的别名
+　　　　index ：表示在迭代过程中每次迭代到的位置（下标）
+　　　　open ：前缀
+　　　　close ：后缀
+　　　　separator ：分隔符，表示迭代时每个元素之间以什么分隔
+·我理解 ,bind标签作用是 ,创建一个变量并将其绑定到上下文：
+	<select id="selectBlogsLike" resultType="Blog">
+	  <bind name="pattern" value="'%' + _parameter.getTitle() + '%'" />
+	  SELECT * FROM BLOG
+	  WHERE title LIKE #{pattern}
+	</select>
+·一对多 —— 查询分类 & 分类对应的产品集合
+多对一 —— 查询所有的产品，同时对每个产品 还能看到它对应的分类
+	实体类：产品类 添加类属性
+	Product.xml：通过listProduct配置关联查询的sql语句。
+		然后通过resultMap ，进行字段和属性的对应。
+		使用association 进行多对一关系关联，指定表字段名称与对象属性名称的一一对应关系
+·我写了两种实现方式，第一种是类似给出的答案，先查询出Product，再查出Category对象，Product存入新Category对象，最后update
+第二种是采用直接SQL操作，Map参数传个cid和id进去，直接update：
+	这个是需要在ORM和SQL效能之间取得平衡。
+如果是小项目，没有什么性能压力，访问人少，那么建议使用第一种，开发快速，易于维护。
+如果是较大项目，性能压力大，数据库访问瓶颈明显，那么就应该使用第二种，用开发成本换取系统效能。
