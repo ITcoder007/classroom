@@ -1,0 +1,46 @@
+·新增加接口CategoryMapper ，并在接口中声明的方法上，加上注解
+	对比配置文件Category.xml，其实就是把SQL语句从XML挪到了注解上来
+	
+·不同场合下，三层架构的概念也是不一样的。  
+	你说到的三层架构大概是Service层，DAO层 ， Controller这三层。 没错DAO层就是Mapper
+	
+·那么Category是如何和Mapper建立对应关系呢？
+在这个例子里，Mapper使用的是注解的方式，比如
+    @Select(" select * from category_ ")  
+    public List<Category> list();
+这个方法会返回泛型是Category的集合，Mybatis就知道把数据查出来之后，放进Category对象了。
+
+·一对多
+	a.增加CategoryMapper接口，查询所有Category
+	//获取Category类本身
+		@Select(" select * from category_ ")
+	//@Results 通过@Result和@Many中调用ProductMapper.listByCategory()方法相结合，来获取一对多关系
+	    @Results({ 
+	                @Result(property = "id", column = "id"),
+	                @Result(property = "products", javaType = List.class, column = "id", many = @Many(select = "com.how2java.mapper.ProductMapper.listByCategory") )
+	            })
+	    public List<Category> list();
+	b.新增接口ProductMapper
+	//注解@Select用于根据分类id获取产品集合
+		@Select(" select * from product_ where cid = #{cid}")
+	    public List<Product> listByCategory(int cid);
+·mybatis-config.xml	
+	<mappers>
+        <mapper resource="com/how2java/pojo/Category.xml"/>
+        <mapper class="com.how2java.mapper.CategoryMapper"/> 
+        <mapper class="com.how2java.mapper.ProductMapper"/> 
+    </mappers>
+	
+
+在默认情况下，会把类的属性和表的字段，按照一对一的关系进行匹配。
+	至于注解如何工作，请参考注解高级教程：
+	http://how2j.cn/k/annotation/annotation-like-hibernate/1058.html
+
+
+
+
+
+
+
+
+	
