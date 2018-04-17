@@ -1,1 +1,111 @@
+············································日志：
+	
+Mybatis内置的日志工厂提供日志功能，具体的日志实现有以下几种方式：
+SLF4J
+Apache Commons Logging
+Log4j 2
+Log4j
+JDK logging
+具体选择哪个日志实现由MyBatis的内置日志工厂确定。它会使用最先找到的（按上文列举的顺序查找）。 如果一个都未找到，日志功能就会被禁用。
+
+
+Mybatis 里可以显示调用，声明使用的框架 log4j
+org.apache.ibatis.logging.LogFactory.useLog4JLogging(); 
+
+源代码贴在下面，大概就是，Mybatis 声明了一个 Log 接口，
+会依次检测，是否能加载到 SLF4J ， Common log, log4j2 ,log4j 等，
+检测到哪个，就加载哪个，然后实例化调用其日志接口。
+设计模式上来说，应该是外观模式吧。下面是复制的 slf4j 介绍。
+
+总结Slf4j工作原理
+　　简单的说下它的原理，就是通过工厂类，提供一个用户的接口！用户可以通过这个外观接口，直接使用API实现日志的记录。而后面的具体实现由Slf4j来寻找加载.寻找的过程，就是通过类加载加载那个叫org/slf4j/impl/StaticLoggerBinder.class的文件，只要实现了这个文件的日志实现系统，都可以作为一种实现方式。如果找到很多种方式，那么就寻找一种默认的方式。
+
+
+log4j.logger.com.how2java=TRACE 这一行的具体是什么意思呢... 其他的意思都能懂
+表示日志输出等级，如果ERROR，那么只有错误才会显示出来。而SQL语句属于TRACE，所以这里要用这个
+
+
+我们写代码的过程中，免不了要输出各种调试信息。在没有使用任何日志工具之前，都会使用 System.out.println 来做到。 这么做直观有效，但是有一系列的缺点：
+1. 不知道这句话是在哪个类，哪个线程里出来的
+2. 不知道什么时候前后两句输出间隔了多少时间
+3. 无法关闭调试信息，一旦System.out.println多了之后，到处都是输出，增加定位自己需要信息的难度
+等等
+
+为了应对这种情况，我们使用Log4j来进行日志输出。 采用如下代码，执行雷同的输出。 可以看到输出结果有几个改观：
+1. 知道是log4j.TestLog4j这个类里的日志
+2. 是在[main]线程里的日志
+3. 日志级别可观察，一共有6个级别 TRACE DEBUG INFO WARN ERROR FATAL
+4. 日志输出级别范围可控制， 如代码所示，只输出高于DEBUG级别的，那么TRACE级别的日志自动不输出
+5. 每句日志消耗的毫秒数(最前面的数字)，可观察，这样就可以进行性能计算
+
+
+
+············································事务：
+alter table category_ ENGINE  = innodb;
+在Mysql中，只有当表的类型是INNODB的时候，才支持事务，所以需要把表category_的类型设置为INNODB,否则无法观察到事务.
+
+
+············································延迟加载：
+<settings> 
+     <!-- 打开延迟加载的开关 --> 
+     <setting name="lazyLoadingEnabled" value="true" /> 
+     <!-- 将积极加载改为消息加载即按需加载 --> 
+     <setting name="aggressiveLazyLoading" value="false"/> 
+</settings> 
+获取分类对应的产品集合，这个时候，才会去对product_表进行查询。
+
+这个延迟加载到底有什么意义，在公司的开发中的会经常用到吗
+先从单表查询、需要时再从关联表去关联查询，大大提高 数据库性能，因为查询单表要比关联查询多张表速度要快。
+
+
+
+············································分页：
+xml（混合）和注解两种方式
+
+使用第三方分页插件 pagehelper
+在mybatis-config.xml中配置插件：
+<plugins>
+    <plugin interceptor="com.github.pagehelper.PageInterceptor"></plugin>
+</plugins>
+
+//PageHelper.offsetPage(1, 20);  //小于第一个参数，第二个参数为共查询多少条
+PageHelper.startPage(2, 20);    //第一个参数为第几页，第二个参数为每页多少条
+
+List<Category> cs = session.selectList("listCategory");
+for (Category c : cs) {
+    System.out.println(c.getName());
+}
  
+PageInfo pageInfo = new PageInfo<>(cs);
+System.out.println("总数："+pageInfo.getTotal());
+System.out.println(pageInfo);
+        
+        
+············································一级缓存 session：
+	session1中查询两次id=1的Category对象。第一次会去数据库中取数据，但是第二次就不会访问数据库了，而是直接从某个地方取出来。
+另外打开一个session,取同样id的数据，就会发现需要执行sql语句，证实了一级缓存是在session里的。
+	
+疑问：是否会有数据库中数据 与 session不一致的情况，它们如何保持数据同步？
+············································二级缓存 SessionFactory：
+配置：在mybatis-config.xml <settings>标签中配置  <setting name="cacheEnabled" value="true"/>
+使用：
+	CRUD配置文件中 加上 </cache>标签
+	让Category实现序列化接口 Serializable  （通常来说，二级缓存的机制里会有一个: 当缓存的个数达到某个数量的时候，把缓存对象保存在硬盘上。
+如果要把对象保存在硬盘上，就必须实现序列化接口了。）
+测试：在同一个SessionFactory下查询id=1的数据，只有第一次需要执行sql语句，以后都是从缓存中取出
+
+
+
+
+············································数据库连接池：
+mybatis有自己的连接池，也可c3p0、druid等
+
+
+
+············································逆向工程：
+Mybatis Generator是一个用于Mybatis逆向工程的工具。 
+前面学习的方式都是先有pojo, mapper, xml, 然后再创建表。
+用逆向工程的方式，首先保证数据库里有表，然后通过Mybatis Generator生成pojo, mapper和xml。
+
+配置：mybatis-generator-core-1.3.5.jar
+	
