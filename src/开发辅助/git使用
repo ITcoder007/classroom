@@ -1,0 +1,179 @@
+github有什么用
+	不要重复发明轮子，直接拿来用，省时，还能学习他们的优秀思想
+	多人协作
+	搭建博客、个人网站、公司官网  github pages
+	写作，markdown格式 gitbook
+	个人简历 活跃的github账号
+	
+git具体命令
+	创建并进入目录，创建文件，执行第一个命令 git init，本目录已经成为一个git仓库了（master分支）。
+	git status 查看状态，例如哪些没有被跟踪
+	git add 将改动放入“暂存区”，可以理解为一个缓存区域
+		git -rm --cached 移除这个缓存
+	git commit 真正的提交
+		将提交分为两步，可以防止 误提交
+		git log 查看所有产生的commit记录
+	git branch 查看当前分支情况
+		git branch a 创建a分支；git checkout a 切换到a分支 ———— git checkout -b a创建并切换到a分支
+		git branch -d 删除已经顺利合并的分支； git branch -D 强制删除某分支（无论其是否已经合并）
+	git merge a 将a分支合并到本分支
+		如有冲突，需要后续处理
+	git tag 查看历史tag记录
+		git tag v1.0 在当前状态下新建一个v1.0标签
+		git checkout v1.1 切换到v1.1
+ps：只有第一次commit的分支才是主分支，而这之后才能用git branch相关命令	查看分支信息
+	才能创建tag，并查看tag
+	
+	
+本地和远程仓库同步操作
+	github提交代码是基于SSH授权的
+	git push origin master 本地代码推到远程仓库origin的master分支
+	git pull origin master 远程仓库origin的master分支的代码更新到本地
+ps:远程仓库为origin。
+两种提交代码的情况：
+	1.先下载代码，再更新到远程
+		 git clone git@github.com:xxxxxxxxxx
+		 git push origin master
+	2.先在本地开发，再push到远程仓库
+		将本地项目与远程github上的test项目关联：git remote add origin git@github.com:stormzhang/test.git
+	查看当前项目有哪些远程仓库： git remote -v
+
+
+git的高阶和一些炫酷操作
+#用户名称和邮箱
+	git config --global user.name "gjx"
+	git config --global user.email "itcoder007@126.com"
+		
+#起别名 快捷键
+	git config --global alias.co checkout
+	git config --global alias.psm 'push origin master' 
+	git config --global alias.plm 'pull origin master'
+例子，给这个命令起别名
+                              git log --graph --pretty=format:'%Cred%h%Creset%C(yellow)%d%Creset%s%Cgreen(%cr)%C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
+	git config --global alias.lg "log --graph --pretty=format:'%Cred%h%Creset%C(yellow)%d%Creset%s%Cgreen(%cr)%C(bold blue)<%an>%Creset' --abbrev-commit --date=relative"	
+
+#更换编辑器
+	git congig --global core.editor "vim"                                                                                                                                             
+
+#设置git终端颜色
+	git config --global color.ui true
+		
+ps:默认这些配置是在 ~/gitconfig 文件下，也可以输入git config -l查看	
+
+diff命令
+	git diff 比较当前文件和暂存区文件差异
+		#比较两次提交之间的差异
+			git diff <$id1><$id2>   
+		#比较两个分支之间的比较
+			git diff <branch1>..<branch2>
+		#比较暂存区和版本库的差异
+			git diff --staged
+
+checkout命令
+	#切换分支
+		git checkout develop
+	#切换标签
+		git checkout v1.1
+	#切换到某次commit (最后一个参数是commit id，即每次commit的SHA1值，可以根据git log看到)
+		git checkout ffd9f2ddxxxxxxxxxxxxxxxxxxxxxxxx
+	#撤销 还没有add进暂存区的文件
+		git checkout a.md
+		
+stash命令
+	使用场景：新功能开发过程中，需要紧急修改bug，但是已经开发的代码不想舍弃 && 不足以产生一个commit
+	#暂时切到别的分支，修复完bug再切回来 代码也能保留
+	#把当前分支没有commit的代码暂存
+	git stash
+	#执行下面命令，发现暂存区已经有一条记录
+	git stash list
+#####代替下面两条命令
+git stash pop
+	#还原stash的代码
+	git stash apply
+	#删除此次stash记录
+	git stash drop
+	
+	
+merge & rebase命令
+	前者合并之后，仍然可以知道来自哪个分支
+	后者合并之后，会将commit按照时间顺序排列
+	
+
+团队开发
+	#查看远程分支列表
+		git branch -r
+	#删除远程分支
+		git push origin :develop
+	#将远程有而本地没有的develop分支迁到本地
+		git checkout develop origin/develop
+		#顺便切换到该分支
+			git  checkout -b develop origin/develop
+			
+分支管理流程 Git Flow
+	master：
+	develop：
+	feature：基于develop，开发新特性 后merge回develop
+	release：基于develop，修复bug 后merge回develop和master
+	hotfix：修复master上的问题，等不及release，完成后merge回 master和develop
+
+
+开源社区：
+	向别人的github贡献代码：
+	1.push到自己的github
+	2.创建pull request，然后等待原作者review你的代码
+
+
+
+发现全世界最优秀的开源项目（你没事的时候刷刷微博、知乎，人家没事的时候刷刷github，看看哪些流行的项目，久而久之，差距越来越大）
+方式1：关注大牛动态 —— 关注stormzhang，再关注他关注的大牛即可
+方式2：查看热门项目 —— explore 可根据时间段、语言进行筛选
+方式3：主动搜索需要 —— search
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
