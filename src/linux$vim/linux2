@@ -1,0 +1,7 @@
+sh流程控制不可为空，如果没有else分支，就不用写这个else
+
+source ./function.sh 同 . ./function.sh 都是读入文件内容并执行
+
+字符处理领域，grep（找出特定的行），awk（将行拆分成多个字段），sed（实现更新插入删除等写操作）三剑客
+
+
