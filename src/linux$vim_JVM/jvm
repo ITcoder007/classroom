@@ -1,0 +1,6 @@
+netstat命令
+	查看time_wait的socket连接
+	
+heap dump记录内存信息的，thread dump是记录CPU信息的
+
+http://bijian1013.iteye.com/blog/2221240

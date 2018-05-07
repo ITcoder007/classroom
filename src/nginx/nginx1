@@ -5,11 +5,30 @@
 安装后的路径
 	1. /usr/local/etc/nginx/nginx.conf （配置文件路径）
 	2. /usr/local/var/www （服务器默认路径）
-	3. /usr/local/Cellar/nginx/1.8.0 （安装路径）
+	3. /usr/local/Cellar/nginx/1.12.2_1 （安装路径）
 	
 
 启动命令(配置文件要加路径，否则就会在nginx安装路径下去找了)
 	nginx -c /usr/local/etc/nginx/nginx.conf
+
+访问路径
+	localhost:8080
+配置路径中 http -> server -> location -> root
+    server {
+        listen       8080;
+        server_name  localhost;
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+
+        location / {
+            root   html;
+            index  index.html index.htm;
+        }
+在安装完nginx服务后，url访问的默认路径是安装的路径html文件夹下的内容，如果需要指定自定义的路径，需要配置nginx.conf文件内容，这样通过url访问就可以了
+        
+
 
 相关命令
 	查看被占用的端口 例 lsof -i:8080
@@ -27,8 +46,126 @@ nginx http请求转发
 		location /api {
 			proxy_pass http://localhost:3000/user/;
 		}
+
+域名免端口 反向代理
+在/etc/nginx/sites-available/ 下新建 git.basiccloud.net文件
+	server{
+		listen 80;
+		server_name git.basiccloud.net;
+		location / {
+			proxy_pass http://127.0.0.1:8800;
+		}
+	}
+
+sudo ln -s /etc/nginx/sites-available/git.basiccloud.net /etc/nginx/sites-available/git.basiccloud.net  
+sudo nginx -t
+sudo nginx -s reload
+
+
+支持keep alive长连接	
+1.保持client 和nginx之间长连接
+	keepalive_timeout  120s 120s;
+    keepalive_requests 10000;
+2.保持nginx 和server之间长连接
+	upstream BACKEND{
+		server 192.168.0.1:8080 weight=1 max_fails=2 fail_timeout=30s;
+		server 192.168.0.2:8080 weight=1 max_fails=2 fail_timeout=30s;
+		
+		keepalive 300;//idle连接数 推荐最大QPS的30%左右
+	}
+
+负载均衡
+http{
+	upstream myapp{
+		round-robin;//默认    待选least_conn;ip_hash;
+		server srv1.example.com weight=3;
+		server srv2.example.com max_fails=3 fail_timeout=30s;
+		server srv3.example.com;
+	}
 	
-nginx访问图片
+	server{
+		listen 80;
+		location / {
+			proxy_pass http://myapp;
+		}
+	}
+}
+
+
+nginx的location配置作用（含 nginx访问图片）
+	http://seanlook.com/2015/05/17/nginx-location-rewrite/
+∂
+所以实际使用中，个人觉得至少有三个匹配规则定义，如下：
+#直接匹配网站根，通过域名访问网站首页比较频繁，使用这个会加速处理，官网如是说。
+#这里是直接转发给后端应用服务器了，也可以是一个静态首页
+# 第一个必选规则
+location = / {
+    proxy_pass http://tomcat:8080/index
+}
+# 第二个必选规则是处理静态文件请求，这是nginx作为http服务器的强项
+# 有两种配置模式，目录匹配或后缀匹配,任选其一或搭配使用
+location ^~ /static/ {
+    root /webroot/static/;
+}
+location ~* \.(gif|jpg|jpeg|png|css|js|ico)$ {
+    root /webroot/res/;
+}
+#第三个规则就是通用规则，用来转发动态请求到后端应用服务器
+#非静态文件请求就默认是动态请求，自己根据实际把握
+#毕竟目前的一些框架的流行，带.php,.jsp后缀的情况很少了
+location / {
+    proxy_pass http://tomcat:8080/
+}
+
+
+rewrite规则
+	与location有点像：-location是对一类路径做控制访问或反向代理，可以proxy_pass到其他机器
+					-rewrite很多时候放在location里面，在同一域名内更改获取资源的路径（执行server块的rewrite指令
+																				执行location匹配
+																				执行选定的location中的rewrite指令）
+																		如果其中某步URI被重写，则重新循环执行1-3，直到找到真实存在的文件；循环超过10次，则返回500 Internal Server Error错误。
+全局变量：
+	例：http://localhost:88/test1/test2/test.php
+$host：localhost
+$server_port：88
+$request_uri：http://localhost:88/test1/test2/test.php
+$document_uri：/test1/test2/test.php
+$document_root：/var/www/html
+$request_filename：/var/www/html/test1/test2/test.php
+
+http {
+    # 定义image日志格式
+    log_format imagelog '[$time_local] ' $image_file ' ' $image_type ' ' $body_bytes_sent ' ' $status;
+    # 开启重写日志
+    rewrite_log on;
+
+    server {
+        root /home/www;
+
+        location / {
+                # 重写规则信息
+                error_log logs/rewrite.log notice;
+                # 注意这里要用‘’单引号引起来，避免{}
+                rewrite '^/images/([a-z]{2})/([a-z0-9]{5})/(.*)\.(png|jpg|gif)$' /data?file=$3.$4;
+                # 注意不能在上面这条规则后面加上“last”参数，否则下面的set指令不会执行
+                set $image_file $3;
+                set $image_type $4;
+        }
+
+        location /data {
+                # 指定针对图片的日志格式，来分析图片类型和大小
+                access_log logs/images.log mian;
+                root /data/images;
+                # 应用前面定义的变量。判断首先文件在不在，不在再判断目录在不在，如果还不在就跳转到最后一个url里
+                try_files /$arg_file /image404.html;
+        }
+        location = /image404.html {
+                # 图片不存在返回特定的信息
+                return 404 "image not found\n";
+        }
+}
+
+对形如/images/ef/uh7b3/test.png的请求，重写到/data?file=test.png，于是匹配到location /data，先看/data/images/test.png文件存不存在，如果存在则正常响应，如果不存在则重写tryfiles到新的image404 location，直接返回404状态码。
 
 
 
