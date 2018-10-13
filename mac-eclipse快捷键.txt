@@ -16,5 +16,5 @@ Hello GitHub!
 14：大小写字母转换：command+shift+x/y
 15：上一个选项卡：
 16.下一个相同字符串：command+k
-17.
+17.上次跳转地址  option+command  + ⬅️
 18.

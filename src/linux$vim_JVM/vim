@@ -9,3 +9,10 @@
  	
  4.组合操作 :wq 先保存文件，再退出    
  	:x 同ZZ命令
+ 	
+ 	
+5."profile" E212: Can't open file for writing
+http://www.cnblogs.com/sandyzhang/p/6782125.html
+sudo /etc/profile
+
+:wq!
